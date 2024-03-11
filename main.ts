@@ -23,16 +23,14 @@ export default class ReadwiseHighligthsPlugins extends Plugin {
 	async onload() {
 		await this.loadSettings();
 		this.api = new ReadwiseApi(this.settings.authToken)
+		this.addSettingTab(new PluginSettings(this.app, this))
 
 		if (this.settings.authToken === '') {
 			new Notice("Readwise highlight import failed: no auth token provided")
 			return
 		}
-
-		this.addSettingTab(new PluginSettings(this.app, this))
-
+		
 		await this.importHighlights()
-
 	}
 
 	async importHighlights() {
