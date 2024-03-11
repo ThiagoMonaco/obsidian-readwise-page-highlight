@@ -1,22 +1,19 @@
 import { Notice, Plugin } from 'obsidian';
 import { PluginSettings } from "./settings/PluginSettings";
-import {LocalBooks} from "./domain/LocalBooks";
 import {ReadwiseApi} from "./readwise/api";
 
 interface Settings {
 	authToken: string
-	updatedAfter: string
-	books: LocalBooks[]
 	importAll: boolean
 	importPath: string
+	lastSync: string
 }
 
 const DEFAULT_SETTINGS: Settings = {
 	authToken: '',
-	updatedAfter: '',
-	books: [],
 	importAll: false,
-	importPath: '/ReadwiseHighlights'
+	importPath: '/ReadwiseHighlights',
+	lastSync: ''
 }
 
 export default class ReadwiseHighligthsPlugins extends Plugin {
@@ -27,31 +24,36 @@ export default class ReadwiseHighligthsPlugins extends Plugin {
 		await this.loadSettings();
 		this.api = new ReadwiseApi(this.settings.authToken)
 
-		if(this.settings.authToken !== '' && this.settings.books.length === 0) {
-			this.settings.books = await this.api.getBooks()
-			await this.saveSettings()
+		if (this.settings.authToken === '') {
+			new Notice("Readwise highlight import failed: no auth token provided")
+			return
 		}
+
 		this.addSettingTab(new PluginSettings(this.app, this))
 
-		const dirExists = await this.app.vault.adapter.exists(`${this.settings.importPath}`)
-		if(!dirExists) {
-			new Notice(`Readwise highlight import failed: path ${this.settings.importPath} does not exist`)
-		} else {
-			await this.importHighlights()
-		}
+		await this.importHighlights()
 
 	}
 
 	async importHighlights() {
-		const ids = this.settings.books.filter((book) => book.enabled).map((book) => book.id)
-		const result = await this.api.getHighlights(this.settings.updatedAfter, ids)
-		result.results.forEach((highlight) => {
-			const book = this.settings.books.find((book) => book.id === highlight.book_id)
+		const dirExists = await this.app.vault.adapter.exists(`${this.settings.importPath}`)
+		if(!dirExists) {
+			new Notice(`Readwise highlight import failed: path ${this.settings.importPath} does not exist`)
+			return
+		}
 
-			this.app.vault.create(
-				`${this.settings.importPath}/${highlight.id}.md`,
-				`### Content: \n${highlight.text}\n Book: ${book?.title}`
-			)
+		const result = await this.api.getHighlights(this.settings.lastSync)
+
+		this.settings.lastSync = new Date().toISOString()
+		await this.saveSettings()
+
+		result.results.forEach((book) => {
+			book.highlights.forEach((highlight) => {
+				this.app.vault.create(
+					`${this.settings.importPath}/${highlight.id}.md`,
+					`### Content: \n${highlight.text}\n Book: ${book?.title}\n`
+				)
+			})
 		})
 	}
 

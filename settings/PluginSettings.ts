@@ -27,19 +27,6 @@ export class PluginSettings extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("Update after")
-			.setDesc("Sync only highlights updated after this date")
-			.addText((text) =>
-				text
-					.setValue(this.plugin.settings.updatedAfter)
-					.setPlaceholder("YYYY-MM-DD")
-					.onChange(async (value) => {
-						this.plugin.settings.updatedAfter = value;
-						await this.plugin.saveSettings();
-					})
-			);
-
-		new Setting(containerEl)
 			.setName("Import path")
 			.setDesc("Path to import the highlights")
 			.addText((text) =>
@@ -51,49 +38,27 @@ export class PluginSettings extends PluginSettingTab {
 					})
 			);
 
-		this.containerEl.createEl("h2", { text: "Select which books to import notes" })
-
 		new Setting(containerEl)
-			.setName("Update book list")
-			.setDesc("Update the list of books from Readwise")
+			.setName("Sync highlights")
+			.setDesc("Sync highlights from Readwise")
 			.addButton((button) =>
 				button
-					.setButtonText("Update")
+					.setButtonText("Sync")
 					.onClick(async () => {
-						this.plugin.settings.books = await this.plugin.api.getBooks()
-						await this.plugin.saveSettings()
-						this.display()
-					})
-			);
-
-
-		new Setting(containerEl)
-			.setName("Toggle all books")
-			.addButton((button) =>
-				button
-					.setButtonText("Toggle all")
-					.onClick(async () => {
-						const value = !this.plugin.settings.importAll
-						this.plugin.settings.importAll = value
-						this.plugin.settings.books.forEach((book, index) => {
-							this.plugin.settings.books[index].enabled = value
-						})
-						await this.plugin.saveSettings();
-						this.display()
+						await this.plugin.importHighlights()
 					})
 			)
 
-		this.plugin.settings.books.forEach((book, index) => {
-			new Setting(containerEl)
-				.setName(book.title)
-				.addToggle((toggle) =>
-					toggle
-						.setValue(book.enabled)
-						.onChange(async (value) => {
-							this.plugin.settings.books[index].enabled = value;
-							await this.plugin.saveSettings();
-						})
-				)
-		})
+		new Setting(containerEl)
+			.setName("Reset last sync")
+			.setDesc("The next sync will import all highlights")
+			.addButton((button) =>
+				button
+					.setButtonText("Reset")
+					.onClick(async () => {
+						this.plugin.settings.lastSync = ''
+						await this.plugin.saveSettings()
+					})
+			)
 	}
 }
