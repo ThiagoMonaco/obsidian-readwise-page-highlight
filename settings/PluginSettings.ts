@@ -16,6 +16,18 @@ export class PluginSettings extends PluginSettingTab {
 		containerEl.empty();
 
 		new Setting(containerEl)
+			.setName("Active")
+			.setDesc("Enable or disable the plugin")
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.active)
+					.onChange(async (value) => {
+						this.plugin.settings.active = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
 			.setName("Auth token")
 			.addText((text) =>
 				text

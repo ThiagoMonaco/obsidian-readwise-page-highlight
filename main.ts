@@ -7,13 +7,15 @@ interface Settings {
 	importAll: boolean
 	importPath: string
 	lastSync: string
+	active: boolean
 }
 
 const DEFAULT_SETTINGS: Settings = {
 	authToken: '',
 	importAll: false,
 	importPath: '/ReadwiseHighlights',
-	lastSync: ''
+	lastSync: '',
+	active: true
 }
 
 export default class ReadwiseHighligthsPlugins extends Plugin {
@@ -25,19 +27,26 @@ export default class ReadwiseHighligthsPlugins extends Plugin {
 		this.api = new ReadwiseApi(this.settings.authToken)
 		this.addSettingTab(new PluginSettings(this.app, this))
 
+		if(!this.settings.active) {
+			return
+		}
+
 		if (this.settings.authToken === '') {
 			new Notice("Readwise highlight import failed: no auth token provided")
 			return
 		}
 		
-		await this.importHighlights()
+		const results = await this.importHighlights()
+		if (results) {
+			new Notice( `Readwise imported ${results.count} highlights from ${results.results.length} books.`)
+		}
 	}
 
 	async importHighlights() {
 		const dirExists = await this.app.vault.adapter.exists(`${this.settings.importPath}`)
 		if(!dirExists) {
 			new Notice(`Readwise highlight import failed: path ${this.settings.importPath} does not exist`)
-			return
+			return null
 		}
 
 		const result = await this.api.getHighlights(this.settings.lastSync)
@@ -53,6 +62,7 @@ export default class ReadwiseHighligthsPlugins extends Plugin {
 				)
 			})
 		})
+		return result
 	}
 
 	onunload() {
